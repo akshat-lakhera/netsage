@@ -112,6 +112,45 @@ def check_missing_route(show_output: str, expected_subnet_hint: str = None):
                 return "Routing table contains no active IPv4 subnet routes"
     return None
 
+def check_interface_down(show_output: str):
+    """
+    Regex-check if any physical interface is in down/down or administratively down state.
+    """
+    if not show_output:
+        return None
+    
+    # Check for administratively down or down/down in interface brief or show interface
+    m_admin = re.search(r'\b((?:Serial|FastEthernet|GigabitEthernet|Eth|Fa|Gi|Se)[0-9/.]+)\s+[^|]*?administratively down', show_output, re.IGNORECASE)
+    if not m_admin:
+        m_admin = re.search(r'\b([A-Za-z0-9/.]+)\s+[^|]*?administratively down\s+down', show_output, re.IGNORECASE)
+        
+    if m_admin:
+        return f"Interface {m_admin.group(1)} is administratively down (shutdown)"
+        
+    m_proto = re.search(r'\b((?:Serial|FastEthernet|GigabitEthernet|Eth|Fa|Gi|Se)[0-9/.]+)\s+is down,\s+line protocol is down', show_output, re.IGNORECASE)
+    if m_proto:
+        return f"Interface {m_proto.group(1)} is physically down (line protocol down)"
+        
+    return None
+
+def check_missing_vlan(show_output: str):
+    """
+    Detect VLAN inactive state or ports assigned to uncreated/missing VLANs.
+    """
+    if not show_output:
+        return None
+        
+    # Check for Inactive VLAN in switchport mode (e.g. Access Mode VLAN: 99 (Inactive))
+    m_inactive = re.search(r'Access Mode VLAN:\s*([0-9]+)\s*\(Inactive\)', show_output, re.IGNORECASE)
+    if m_inactive:
+        return f"Switchport assigned to VLAN {m_inactive.group(1)} which is Inactive (missing from VLAN database)"
+        
+    # Check for missing allowed VLAN on trunk
+    if "trunk" in show_output.lower() and re.search(r'VLAN[0-9]*\s+not listed|missing from trunk', show_output, re.IGNORECASE):
+        return "VLAN is missing from switch database or trunk allowed list"
+        
+    return None
+
 def main():
     cases_file = os.path.join(os.path.dirname(__file__), "..", "data", "cases.csv")
     output_file = os.path.join(os.path.dirname(__file__), "..", "results", "rule_checker_sample_output.txt")
@@ -161,6 +200,14 @@ def main():
             route_res = check_missing_route(show_output, subnet_hint)
             if route_res:
                 findings.append(route_res)
+                
+            if_res = check_interface_down(show_output)
+            if if_res:
+                findings.append(if_res)
+                
+            vlan_res = check_missing_vlan(show_output)
+            if vlan_res:
+                findings.append(vlan_res)
                 
             if findings:
                 finding_count += 1
