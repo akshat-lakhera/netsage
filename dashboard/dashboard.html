@@ -1,531 +1,979 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="sl-theme-dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetSage AI — AI Troubleshooting Assistant Dashboard</title>
-    <!-- Inter Font -->
+    <title>NetSage AI — Network Troubleshooting Assistant</title>
+    <meta name="description" content="AI-powered network troubleshooting assistant for Packet Tracer labs with mandatory human review">
+
+    <!-- Shoelace Dark Theme + Autoloader -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+
+    <!-- Chart.js + PapaParse -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- Chart.js & PapaParse CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
     <style>
         :root {
-            --bg-base: #0b0f19;
-            --bg-card: rgba(17, 24, 39, 0.7);
-            --bg-card-hover: rgba(30, 41, 59, 0.8);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --accent-cyan: #06b6d4;
-            --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
-            --accent-green: #10b981;
-            --accent-amber: #f59e0b;
-            --accent-red: #ef4444;
-            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --ns-bg: #09090b;
+            --ns-surface: #111113;
+            --ns-surface-2: #18181b;
+            --ns-border: #27272a;
+            --ns-text: #fafafa;
+            --ns-text-muted: #a1a1aa;
+            --ns-text-dim: #71717a;
+            --ns-accent: #0ea5e9;
+            --ns-green: #22c55e;
+            --ns-amber: #eab308;
+            --ns-red: #ef4444;
+            --ns-mono: 'JetBrains Mono', monospace;
+            --ns-sans: 'Inter', system-ui, sans-serif;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--bg-base);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
-            color: var(--text-primary);
-            font-family: var(--font-sans);
+            font-family: var(--ns-sans);
+            background: var(--ns-bg);
+            color: var(--ns-text);
             min-height: 100vh;
-            padding: 2rem;
-            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            max-width: 1320px;
-            margin: 0 auto;
+        /* ═══ LAYOUT ═══ */
+        .app {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
         }
 
-        header {
+        .sidebar {
+            background: var(--ns-surface);
+            border-right: 1px solid var(--ns-border);
+            padding: 20px 14px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 12px;
+            padding: 6px 10px;
+            margin-bottom: 28px;
         }
 
-        .brand-badge {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.25rem;
-            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+        .brand-icon {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 12px; color: #000;
+            font-family: var(--ns-mono);
         }
 
-        h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            background: linear-gradient(to right, #ffffff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.03em; }
+        .brand-sub { font-size: 10px; color: var(--ns-text-dim); font-family: var(--ns-mono); }
+
+        .nav-section {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--ns-text-dim);
+            padding: 18px 10px 6px;
         }
 
-        .subtitle {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
+        .nav-btn {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--ns-text-muted);
+            font: 500 13px/1 var(--ns-sans);
+            cursor: pointer;
+            transition: all 120ms ease;
+            margin-bottom: 2px;
         }
 
-        .tag-pill {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            color: #60a5fa;
-            padding: 0.35rem 0.85rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
+        .nav-btn:hover { background: rgba(255,255,255,0.05); color: var(--ns-text); }
+        .nav-btn.active { background: rgba(14,165,233,0.12); color: var(--ns-accent); }
+
+        .nav-btn sl-icon { font-size: 16px; }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 12px 10px;
+            border-top: 1px solid var(--ns-border);
+            font-size: 11px;
+            color: var(--ns-text-dim);
+            display: flex; align-items: center; gap: 8px;
         }
 
-        /* Metrics grid */
-        .metrics-grid {
+        .live-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--ns-green);
+            box-shadow: 0 0 8px var(--ns-green);
+        }
+
+        /* ═══ MAIN ═══ */
+        .main {
+            padding: 32px 40px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+        .page-desc { font-size: 13px; color: var(--ns-text-dim); margin-top: 2px; margin-bottom: 28px; }
+
+        /* ═══ METRIC CARDS ═══ */
+        .metrics {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.25rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
         .metric-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.25rem;
-            transition: all 0.2s ease;
+            background: var(--ns-surface-2);
+            border: 1px solid var(--ns-border);
+            border-radius: 12px;
+            padding: 18px 20px;
         }
 
-        .metric-card:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
+        .metric-card .label { font-size: 11px; color: var(--ns-text-dim); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+        .metric-card .value { font-size: 30px; font-weight: 700; font-family: var(--ns-mono); margin-top: 4px; line-height: 1; }
+        .metric-card .sub { font-size: 11px; color: var(--ns-text-dim); margin-top: 6px; }
 
-        .metric-title {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin: 0.25rem 0;
-            font-family: var(--font-mono);
-        }
-
-        .metric-desc {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        /* Charts Section */
+        /* ═══ CHART PANELS ═══ */
         .charts-grid {
             display: grid;
             grid-template-columns: 3fr 2fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        @media (max-width: 1024px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
+            gap: 14px;
+            margin-bottom: 24px;
         }
 
         .chart-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
+            background: var(--ns-surface-2);
+            border: 1px solid var(--ns-border);
+            border-radius: 12px;
+            padding: 20px;
         }
 
-        .chart-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+        .chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .chart-card .sub { font-size: 11px; color: var(--ns-text-dim); margin-bottom: 16px; }
+        .chart-wrap { position: relative; min-height: 260px; }
+
+        /* ═══ DIAGNOSE ═══ */
+        .diagnose-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            align-items: start;
         }
 
-        .chart-subtitle {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 1.25rem;
-        }
-
-        .canvas-container {
-            position: relative;
-            flex-grow: 1;
-            min-height: 280px;
-            width: 100%;
-        }
-
-        /* Data table */
-        .table-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.5rem;
+        .panel {
+            background: var(--ns-surface-2);
+            border: 1px solid var(--ns-border);
+            border-radius: 12px;
             overflow: hidden;
         }
 
-        .table-wrapper {
-            overflow-x: auto;
-            margin-top: 1rem;
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--ns-border);
         }
 
-        table {
+        .panel-header h3 { font-size: 14px; font-weight: 600; }
+        .panel-header p { font-size: 11px; color: var(--ns-text-dim); margin-top: 2px; }
+
+        .panel-body { padding: 20px; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--ns-text-muted); margin-bottom: 5px; }
+
+        .form-group sl-input::part(base),
+        .form-group sl-textarea::part(base) {
+            background: var(--ns-surface);
+            border-color: var(--ns-border);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--ns-text-dim);
+        }
+
+        .empty-state sl-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.3; }
+
+        /* ═══ RESULT FIELDS ═══ */
+        .result-field { margin-bottom: 14px; }
+        .result-field .rf-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ns-text-dim); margin-bottom: 3px; }
+        .result-field .rf-value { font-size: 13px; color: var(--ns-text); line-height: 1.6; }
+        .rf-mono { font-family: var(--ns-mono); font-size: 12px; background: var(--ns-surface); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--ns-border); }
+
+        .fix-list { list-style: none; counter-reset: fix; }
+        .fix-list li { counter-increment: fix; padding-left: 28px; position: relative; margin-bottom: 8px; font-size: 13px; }
+        .fix-list li::before {
+            content: counter(fix);
+            position: absolute; left: 0; top: 1px;
+            width: 18px; height: 18px; border-radius: 5px;
+            background: rgba(14,165,233,0.12); color: var(--ns-accent);
+            font: 700 10px/18px var(--ns-mono);
+            text-align: center;
+        }
+
+        .review-bar {
+            display: none;
+            gap: 8px;
+            padding: 14px 20px;
+            border-top: 1px solid var(--ns-border);
+            background: var(--ns-surface);
+            align-items: center;
+        }
+
+        .review-bar.show { display: flex; }
+        .review-bar sl-input { flex: 1; }
+
+        /* ═══ CASE TABLE ═══ */
+        .table-wrap {
+            background: var(--ns-surface-2);
+            border: 1px solid var(--ns-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--ns-border);
+        }
+
+        .table-toolbar h3 { font-size: 14px; font-weight: 600; }
+
+        table.cases {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.875rem;
-            text-align: left;
+            font-size: 12px;
         }
 
-        th {
-            background: rgba(15, 23, 42, 0.6);
-            color: var(--text-secondary);
-            font-weight: 600;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
+        table.cases th {
+            text-align: left; padding: 10px 14px;
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--ns-text-dim);
+            background: var(--ns-surface);
+            border-bottom: 1px solid var(--ns-border);
             white-space: nowrap;
         }
 
-        td {
-            padding: 0.85rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
+        table.cases td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(39,39,42,0.5);
+            vertical-align: top;
         }
 
-        tr:hover td {
-            background: var(--bg-card-hover);
+        table.cases tr { cursor: pointer; transition: background 100ms; }
+        table.cases tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .cell-id { font-family: var(--ns-mono); font-weight: 600; font-size: 11px; color: var(--ns-accent); }
+        .cell-trunc { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* ═══ FILTER PILLS ═══ */
+        .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+
+        .pill {
+            padding: 4px 12px; border-radius: 999px;
+            font: 500 11px var(--ns-mono);
+            background: rgba(255,255,255,0.04);
+            color: var(--ns-text-dim);
+            border: 1px solid var(--ns-border);
+            cursor: pointer;
+            transition: all 120ms;
         }
 
-        .badge-status {
-            display: inline-block;
-            padding: 0.25rem 0.6rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            font-family: var(--font-mono);
+        .pill:hover { color: var(--ns-text); border-color: rgba(255,255,255,0.1); }
+        .pill.active { background: rgba(14,165,233,0.12); color: var(--ns-accent); border-color: rgba(14,165,233,0.25); }
+
+        /* ═══ RAI LOG ═══ */
+        .rai-card {
+            background: var(--ns-surface-2);
+            border: 1px solid var(--ns-border);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
         }
 
-        .status-Accepted {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
+        .rai-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(39,39,42,0.5);
+            display: flex; align-items: center; gap: 10px;
         }
 
-        .status-Edited {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
+        .rai-num {
+            width: 24px; height: 24px; border-radius: 6px;
+            background: rgba(239,68,68,0.12); color: var(--ns-red);
+            font: 700 11px/24px var(--ns-mono);
+            text-align: center; flex-shrink: 0;
         }
 
-        .status-Rejected {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
+        .rai-header span { font-size: 13px; font-weight: 600; }
+        .rai-body { padding: 16px 20px; }
 
-        .status-Pending {
-            background: rgba(156, 163, 175, 0.15);
-            color: #d1d5db;
-            border: 1px solid rgba(156, 163, 175, 0.3);
-        }
+        .rai-section { margin-bottom: 12px; }
+        .rai-section .rai-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ns-text-dim); margin-bottom: 3px; }
+        .rai-section .rai-text { font-size: 13px; color: var(--ns-text-muted); line-height: 1.6; }
 
-        .status-agrees-true {
-            color: var(--accent-green);
-            font-weight: 600;
-        }
-
-        .status-agrees-false {
-            color: var(--accent-red);
-            font-weight: 600;
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 1024px) {
+            .app { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .main { padding: 20px 16px; max-height: none; }
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid { grid-template-columns: 1fr; }
+            .diagnose-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="brand">
-                <div class="brand-badge">NS</div>
-                <div>
-                    <h1>NetSage AI Dashboard</h1>
-                    <div class="subtitle">AI Packet Tracer Troubleshooting Assistant & Mandatory Human Review Analytics</div>
-                </div>
-            </div>
-            <div class="tag-pill">Course: Modern AI</div>
-        </header>
-
-        <!-- KPI Metrics -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-title">Total Cases</div>
-                <div class="metric-value" id="val-total">0</div>
-                <div class="metric-desc">Packet Tracer troubleshooting cases</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-title">AI Direct Agreement</div>
-                <div class="metric-value" id="val-ai-agree" style="color: var(--accent-cyan);">0%</div>
-                <div class="metric-desc">Matched expected fault automatically</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-title">Human Acceptance Rate</div>
-                <div class="metric-value" id="val-human-accept" style="color: var(--accent-green);">0%</div>
-                <div class="metric-desc">Accepted diagnoses upon review</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-title">Human Edits / Rejections</div>
-                <div class="metric-value" id="val-human-edit" style="color: var(--accent-amber);">0</div>
-                <div class="metric-desc">Required human correction</div>
+<div class="app">
+    <!-- ═══ SIDEBAR ═══ -->
+    <nav class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">NS</div>
+            <div>
+                <div class="brand-name">NetSage AI</div>
+                <div class="brand-sub">v1.0 Modern AI</div>
             </div>
         </div>
 
-        <!-- Charts -->
-        <div class="charts-grid">
-            <div class="chart-card">
-                <div class="chart-title">Troubleshooting Case Breakdown by Concept Tag</div>
-                <div class="chart-subtitle">Distribution of cases across networking fault categories</div>
-                <div class="canvas-container">
-                    <canvas id="barChart"></canvas>
+        <div class="nav-section">Workflow</div>
+        <button class="nav-btn active" data-page="diagnose" onclick="go('diagnose')">
+            <sl-icon name="search"></sl-icon> Diagnose
+        </button>
+        <button class="nav-btn" data-page="cases" onclick="go('cases')">
+            <sl-icon name="folder"></sl-icon> Case Browser
+        </button>
+
+        <div class="nav-section">Analytics</div>
+        <button class="nav-btn" data-page="dashboard" onclick="go('dashboard')">
+            <sl-icon name="bar-chart-2"></sl-icon> Dashboard
+        </button>
+        <button class="nav-btn" data-page="rai" onclick="go('rai')">
+            <sl-icon name="shield"></sl-icon> Responsible AI
+        </button>
+
+        <div class="sidebar-footer">
+            <span class="live-dot"></span> System Online
+        </div>
+    </nav>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main" id="mainArea">
+
+        <!-- ─── DIAGNOSE PAGE ─── -->
+        <section class="page active" id="pg-diagnose">
+            <h1 class="page-title">Live Diagnosis</h1>
+            <p class="page-desc">Paste symptoms and show-command output for AI root-cause analysis. Human review is mandatory before acceptance.</p>
+
+            <div class="diagnose-grid">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Input Case Data</h3>
+                        <p>Provide troubleshooting context from your Packet Tracer lab</p>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label>Symptom</label>
+                            <sl-input id="inSymptom" placeholder="e.g. PC1 gets IP but cannot reach server in VLAN30" size="medium"></sl-input>
+                        </div>
+                        <div class="form-group">
+                            <label>Topology Note</label>
+                            <sl-input id="inTopology" placeholder="e.g. R1 trunk to SW1, VLAN30=Server, VLAN10=PC1" size="medium"></sl-input>
+                        </div>
+                        <div class="form-group">
+                            <label>Show-Command Output</label>
+                            <sl-textarea id="inShowOutput" rows="6" placeholder="Paste show ip route, show access-lists, ipconfig output etc. Separate lines with | character" resize="vertical" size="medium"></sl-textarea>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <sl-button variant="primary" id="btnDiagnose" onclick="runDiagnosis()">
+                                <sl-icon slot="prefix" name="cpu"></sl-icon> Run Diagnosis
+                            </sl-button>
+                            <sl-button variant="default" onclick="clearForm()">Clear</sl-button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" id="resultPanel">
+                    <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <h3>AI Diagnosis Result</h3>
+                        <span id="resultBadge"></span>
+                    </div>
+                    <div class="panel-body" id="resultBody">
+                        <div class="empty-state">
+                            <sl-icon name="cpu"></sl-icon>
+                            <p>Paste case data and run diagnosis to see the AI analysis</p>
+                        </div>
+                    </div>
+                    <div class="review-bar" id="reviewBar">
+                        <sl-input id="reviewNote" placeholder="Reviewer note (required)" size="small"></sl-input>
+                        <sl-button variant="success" size="small" onclick="review('Accepted')">Accept</sl-button>
+                        <sl-button variant="warning" size="small" onclick="review('Edited')">Edit</sl-button>
+                        <sl-button variant="danger" size="small" onclick="review('Rejected')">Reject</sl-button>
+                    </div>
                 </div>
             </div>
-            <div class="chart-card">
-                <div class="chart-title">Human Review Decision Breakdown</div>
-                <div class="chart-subtitle">Mandatory reviewer verdict (AI vs Human Agreement Rate)</div>
-                <div class="canvas-container">
-                    <canvas id="donutChart"></canvas>
+        </section>
+
+        <!-- ─── CASES PAGE ─── -->
+        <section class="page" id="pg-cases">
+            <h1 class="page-title">Case Browser</h1>
+            <p class="page-desc">Explore all 30 troubleshooting cases with AI diagnosis results and human review verdicts</p>
+
+            <div class="pills" id="pills"></div>
+
+            <div class="table-wrap">
+                <div class="table-toolbar">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <h3>All Cases</h3>
+                        <sl-badge variant="neutral" id="caseCount">0</sl-badge>
+                    </div>
+                    <sl-input id="searchBox" placeholder="Search cases..." size="small" clearable style="width:220px;">
+                        <sl-icon slot="prefix" name="search"></sl-icon>
+                    </sl-input>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="cases">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tag</th>
+                                <th>Layer</th>
+                                <th>Confidence</th>
+                                <th>Root Cause</th>
+                                <th>Expected</th>
+                                <th>Match</th>
+                                <th>Review</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tBody"></tbody>
+                    </table>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Table View -->
-        <div class="table-card">
-            <div class="chart-title">Case Results & Human Review Log</div>
-            <div class="chart-subtitle">Live evaluation data loaded from <code>results/ai_results.csv</code></div>
-            <div class="table-wrapper">
-                <table id="resultsTable">
-                    <thead>
-                        <tr>
-                            <th>Case ID</th>
-                            <th>Concept Tag</th>
-                            <th>OSI Layer</th>
-                            <th>Confidence</th>
-                            <th>AI Root Cause</th>
-                            <th>Expected Fault</th>
-                            <th>AI Agreement</th>
-                            <th>Review Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr>
-                            <td colspan="8" style="text-align: center; color: var(--text-secondary);">Loading CSV data...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- ─── DASHBOARD PAGE ─── -->
+        <section class="page" id="pg-dashboard">
+            <h1 class="page-title">Analytics Dashboard</h1>
+            <p class="page-desc">AI performance metrics, fault distribution, and human review agreement rates</p>
+
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="label">Total Cases</div>
+                    <div class="value" id="mTotal">0</div>
+                    <div class="sub">Packet Tracer labs</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">AI Agreement</div>
+                    <div class="value" id="mAgree" style="color:var(--ns-accent)">0%</div>
+                    <div class="sub">Matched expected fault</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Human Accepted</div>
+                    <div class="value" id="mAccepted" style="color:var(--ns-green)">0%</div>
+                    <div class="sub">Approved diagnoses</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Corrections</div>
+                    <div class="value" id="mCorrections" style="color:var(--ns-amber)">0</div>
+                    <div class="sub">Edited or rejected</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Fault Distribution by Concept</h3>
+                    <div class="sub">Case counts across networking fault categories</div>
+                    <div class="chart-wrap"><canvas id="cBar"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Human Review Verdicts</h3>
+                    <div class="sub">Accept / Edit / Reject breakdown</div>
+                    <div class="chart-wrap"><canvas id="cDonut"></canvas></div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>OSI Layer Distribution</h3>
+                    <div class="sub">Faults mapped to the OSI model</div>
+                    <div class="chart-wrap"><canvas id="cOsi"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Severity by Concept Tag</h3>
+                    <div class="sub">Concept area mapped to case severity</div>
+                    <div class="chart-wrap"><canvas id="cSev"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─── RESPONSIBLE AI PAGE ─── -->
+        <section class="page" id="pg-rai">
+            <h1 class="page-title">Responsible AI Log</h1>
+            <p class="page-desc">Documented cases where AI diagnosis was incorrect, incomplete, or misleading — with failure analysis</p>
+            <div id="raiWrap"></div>
+        </section>
+    </main>
+</div>
+
+<!-- ═══ CASE DETAIL DIALOG ═══ -->
+<sl-dialog label="Case Detail" id="caseDialog" style="--width:680px;">
+    <div id="dialogBody"></div>
+</sl-dialog>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════ */
+let DATA = [];
+let filter = 'All';
+
+/* ══════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════ */
+function go(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('pg-' + id).classList.add('active');
+    document.querySelector(`[data-page="${id}"]`).classList.add('active');
+    document.getElementById('mainArea').scrollTop = 0;
+    if (id === 'dashboard' && DATA.length) renderDash();
+    if (id === 'rai') renderRAI();
+}
+
+/* ══════════════════════════════════════════════
+   CSV LOAD
+   ══════════════════════════════════════════════ */
+function loadCSV() {
+    Papa.parse('../results/ai_results.csv', {
+        download: true, header: true, skipEmptyLines: true,
+        complete(r) {
+            DATA = r.data;
+            renderTable(DATA);
+            buildPills();
+        },
+        error() {
+            document.getElementById('tBody').innerHTML =
+                '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ns-text-dim)">Unable to load ai_results.csv — run the diagnosis pipeline first</td></tr>';
+        }
+    });
+}
+
+/* ══════════════════════════════════════════════
+   CASE TABLE
+   ══════════════════════════════════════════════ */
+function renderTable(rows) {
+    const tb = document.getElementById('tBody');
+    document.getElementById('caseCount').textContent = rows.length;
+    tb.innerHTML = '';
+    rows.forEach(r => {
+        const yes = r.agrees === 'True' || r.agrees === 'true';
+        const status = (r.review_status || 'Pending').trim();
+        const tr = document.createElement('tr');
+        tr.onclick = () => openDetail(r);
+        tr.innerHTML = `
+            <td class="cell-id">${r.case_id||''}</td>
+            <td><sl-badge variant="primary" pill>${r.concept_tag||''}</sl-badge></td>
+            <td style="font-size:11px;color:var(--ns-text-muted)">${r.osi_layer||''}</td>
+            <td><sl-badge variant="${r.confidence==='high'?'success':r.confidence==='medium'?'warning':'danger'}" pill>${r.confidence||''}</sl-badge></td>
+            <td class="cell-trunc" title="${esc(r.root_cause)}">${r.root_cause||''}</td>
+            <td class="cell-trunc" title="${esc(r.expected_fault)}">${r.expected_fault||''}</td>
+            <td><sl-badge variant="${yes?'success':'danger'}" pill>${yes?'Yes':'No'}</sl-badge></td>
+            <td><sl-badge variant="${status==='Accepted'?'success':status==='Edited'?'warning':status==='Rejected'?'danger':'neutral'}" pill>${status}</sl-badge></td>
+        `;
+        tb.appendChild(tr);
+    });
+}
+
+function esc(s) { return (s||'').replace(/"/g,'&quot;'); }
+
+function buildPills() {
+    const tags = ['All', ...new Set(DATA.map(c => c.concept_tag).filter(Boolean))];
+    const wrap = document.getElementById('pills');
+    wrap.innerHTML = '';
+    tags.forEach(t => {
+        const b = document.createElement('button');
+        b.className = 'pill' + (t === 'All' ? ' active' : '');
+        b.textContent = t;
+        b.onclick = () => {
+            filter = t;
+            wrap.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+            b.classList.add('active');
+            applyFilter();
+        };
+        wrap.appendChild(b);
+    });
+}
+
+function applyFilter() {
+    const q = (document.getElementById('searchBox')?.value || '').toLowerCase();
+    let rows = DATA;
+    if (filter !== 'All') rows = rows.filter(r => r.concept_tag === filter);
+    if (q) rows = rows.filter(r =>
+        (r.case_id||'').toLowerCase().includes(q) ||
+        (r.root_cause||'').toLowerCase().includes(q) ||
+        (r.expected_fault||'').toLowerCase().includes(q) ||
+        (r.concept_tag||'').toLowerCase().includes(q)
+    );
+    renderTable(rows);
+}
+
+/* Search listener — Shoelace fires sl-input event */
+document.addEventListener('DOMContentLoaded', () => {
+    const sb = document.getElementById('searchBox');
+    if (sb) {
+        sb.addEventListener('sl-input', applyFilter);
+        sb.addEventListener('sl-clear', applyFilter);
+    }
+});
+
+/* ══════════════════════════════════════════════
+   CASE DETAIL DIALOG
+   ══════════════════════════════════════════════ */
+function openDetail(r) {
+    const dlg = document.getElementById('caseDialog');
+    dlg.label = `Case ${r.case_id} — ${r.concept_tag}`;
+    const fixes = (r.fix_steps||'').split(';').map(s=>s.trim()).filter(Boolean);
+    const yes = r.agrees === 'True' || r.agrees === 'true';
+    const status = (r.review_status||'Pending').trim();
+
+    document.getElementById('dialogBody').innerHTML = `
+        <div class="result-field">
+            <div class="rf-label">Root Cause</div>
+            <div class="rf-value">${r.root_cause||''}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="result-field">
+                <div class="rf-label">OSI Layer</div>
+                <div class="rf-value">${r.osi_layer||''}</div>
+            </div>
+            <div class="result-field">
+                <div class="rf-label">Confidence</div>
+                <div class="rf-value"><sl-badge variant="${r.confidence==='high'?'success':'warning'}" pill>${r.confidence||''}</sl-badge></div>
             </div>
         </div>
-    </div>
+        <div class="result-field">
+            <div class="rf-label">Evidence</div>
+            <div class="rf-value rf-mono">${r.evidence||''}</div>
+        </div>
+        <div class="result-field">
+            <div class="rf-label">Next Command</div>
+            <div class="rf-value rf-mono">${r.next_command||''}</div>
+        </div>
+        <div class="result-field">
+            <div class="rf-label">Fix Steps</div>
+            <ol class="fix-list">${fixes.map(f=>`<li>${f}</li>`).join('')}</ol>
+        </div>
+        <sl-divider></sl-divider>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="result-field">
+                <div class="rf-label">Expected Fault</div>
+                <div class="rf-value">${r.expected_fault||''}</div>
+            </div>
+            <div class="result-field">
+                <div class="rf-label">AI Agreement</div>
+                <div class="rf-value"><sl-badge variant="${yes?'success':'danger'}" pill>${yes?'Yes':'No'}</sl-badge></div>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="result-field">
+                <div class="rf-label">Review Status</div>
+                <div class="rf-value"><sl-badge variant="${status==='Accepted'?'success':status==='Edited'?'warning':'danger'}" pill>${status}</sl-badge></div>
+            </div>
+            <div class="result-field">
+                <div class="rf-label">Reviewer Note</div>
+                <div class="rf-value">${r.reviewer_note||'—'}</div>
+            </div>
+        </div>
+        ${r.corrected_root_cause ? `
+        <div class="result-field" style="margin-top:8px;">
+            <div class="rf-label">Corrected Root Cause</div>
+            <div class="rf-value" style="color:var(--ns-amber)">${r.corrected_root_cause}</div>
+        </div>` : ''}
+    `;
+    dlg.show();
+}
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const csvPath = '../results/ai_results.csv';
+/* ══════════════════════════════════════════════
+   DIAGNOSIS ENGINE (deterministic local rules)
+   ══════════════════════════════════════════════ */
+function runDiagnosis() {
+    const sym = document.getElementById('inSymptom').value.trim();
+    const topo = document.getElementById('inTopology').value.trim();
+    const show = document.getElementById('inShowOutput').value.trim();
+    if (!sym || !show) {
+        const t = document.createElement('sl-alert');
+        t.variant = 'warning'; t.closable = true; t.duration = 4000;
+        t.innerHTML = '<sl-icon slot="icon" name="exclamation-triangle"></sl-icon>Provide at least a symptom and show-command output.';
+        document.body.appendChild(t);
+        t.toast();
+        return;
+    }
 
-            Papa.parse(csvPath, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    processAndRenderData(results.data);
-                },
-                error: function(err) {
-                    console.error("Error loading CSV:", err);
-                    document.getElementById('tableBody').innerHTML = `
-                        <tr>
-                            <td colspan="8" style="text-align: center; color: var(--accent-red);">
-                                Unable to load results/ai_results.csv. Run run_diagnosis.py to generate results.
-                            </td>
-                        </tr>`;
-                }
-            });
-        });
+    const btn = document.getElementById('btnDiagnose');
+    btn.loading = true;
 
-        function processAndRenderData(data) {
-            const total = data.length;
-            document.getElementById('val-total').textContent = total;
+    setTimeout(() => {
+        const res = diagnoseLocal(sym, topo, show);
+        showResult(res);
+        btn.loading = false;
+    }, 700);
+}
 
-            if (total === 0) return;
+function diagnoseLocal(sym, topo, show) {
+    const blob = (sym + ' ' + topo + ' ' + show).toLowerCase();
 
-            // Concept Tags counting
-            const tagCounts = {
-                'VLAN': 0, 'Gateway': 0, 'DHCP': 0, 'DNS': 0,
-                'Routing': 0, 'ACL': 0, 'NAT': 0, 'Wireless': 0
+    const rules = [
+        { test: /access.list|acl|deny\s+(ip|tcp)/, cause: 'ACL on router interface dropping inter-VLAN traffic', layer: 'Layer 3/4', cmd: 'show ip access-lists', tag: 'ACL', steps: ['Identify ACL applied to interface','Modify/remove deny rule','Re-apply updated ACL'] },
+        { test: /wlan|wireless|ssid|wlc/, cause: 'Wireless SSID mapped to incorrect VLAN', layer: 'Layer 2', cmd: 'show wlan summary', tag: 'Wireless', steps: ['Remap SSID to correct VLAN on WLC','Verify client isolation'] },
+        { test: /dhcp.*exhaust|leased.*254|total.*254/, cause: 'DHCP pool exhausted — no available addresses', layer: 'Layer 3', cmd: 'show ip dhcp binding', tag: 'DHCP', steps: ['Expand pool or shorten lease','Clear stale bindings'] },
+        { test: /duplicate.*ip|ip:.*ip:/i, cause: 'Duplicate IP assigned to multiple hosts', layer: 'Layer 3', cmd: 'show mac address-table dynamic', tag: 'DHCP', steps: ['Assign unique IP to conflicting host','Verify uniqueness with ARP'] },
+        { test: /nslookup|dns.*timeout|10\.0\.99/, cause: 'Missing route to DNS server subnet', layer: 'Layer 3', cmd: 'show ip route', tag: 'DNS', steps: ['Add static route to DNS subnet','Verify with ping'] },
+        { test: /ospf.*timer|hello.*interval|dead.*interval/, cause: 'OSPF Hello/Dead timer mismatch preventing adjacency', layer: 'Layer 3', cmd: 'show ip ospf interface', tag: 'Routing', steps: ['Align timers on both routers'] },
+        { test: /passive.*interface/, cause: 'OSPF interface set to passive preventing advertisements', layer: 'Layer 3', cmd: 'show ip protocols', tag: 'Routing', steps: ['Remove from passive list'] },
+        { test: /administratively\s+down/, cause: 'Interface administratively shut down', layer: 'Layer 1', cmd: 'show interface', tag: 'Routing', steps: ['Enter interface config','Issue no shutdown'] },
+        { test: /nat.*inside|no\s+ip\s+nat/, cause: 'NAT inside not applied on internal interface', layer: 'Layer 3', cmd: 'show running-config interface', tag: 'NAT', steps: ['Apply ip nat inside'] },
+        { test: /static\s+nat|overlapping.*nat|203\.0\.113/, cause: 'Overlapping static NAT and overload pool', layer: 'Layer 3', cmd: 'show ip nat translations', tag: 'NAT', steps: ['Assign distinct public IP','Clear translations'] },
+        { test: /gateway.*mismatch|gw:.*different|10\.0\.24\.1/, cause: 'Host default gateway in wrong subnet', layer: 'Layer 3', cmd: 'show ip interface brief', tag: 'Gateway', steps: ['Reconfigure gateway to correct IP'] },
+        { test: /vlan.*inactive|vlan\s*99/, cause: 'Port assigned to VLAN not in switch database', layer: 'Layer 2', cmd: 'show vlan brief', tag: 'VLAN', steps: ['Create missing VLAN in database'] },
+        { test: /trunk.*allowed|vlans\s+allowed/, cause: 'VLAN missing from trunk allowed list', layer: 'Layer 2', cmd: 'show interfaces trunk', tag: 'VLAN', steps: ['Add VLAN to trunk allowed list'] }
+    ];
+
+    for (const rule of rules) {
+        if (rule.test.test(blob)) {
+            return {
+                root_cause: rule.cause,
+                osi_layer: rule.layer,
+                confidence: 'high',
+                evidence: extractEv(show, rule.test),
+                next_command: rule.cmd,
+                fix_steps: rule.steps,
+                concept_tag: rule.tag
             };
-
-            // Review status counting
-            const reviewCounts = {
-                'Accepted': 0,
-                'Edited': 0,
-                'Rejected': 0,
-                'Pending': 0
-            };
-
-            let aiAgreesCount = 0;
-
-            const tableBody = document.getElementById('tableBody');
-            tableBody.innerHTML = '';
-
-            data.forEach(row => {
-                // Count tags
-                let tag = row.concept_tag || 'Uncategorized';
-                // Normalize tag lookup
-                const matchKey = Object.keys(tagCounts).find(k => k.toLowerCase() === tag.toLowerCase());
-                if (matchKey) {
-                    tagCounts[matchKey]++;
-                } else {
-                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                }
-
-                // Count agrees
-                const agrees = (row.agrees === 'true' || row.agrees === 'True' || row.agrees === true);
-                if (agrees) aiAgreesCount++;
-
-                // Count status
-                let status = row.review_status ? row.review_status.trim() : 'Pending';
-                if (!['Accepted', 'Edited', 'Rejected'].includes(status)) {
-                    status = 'Pending';
-                }
-                reviewCounts[status]++;
-
-                // Append table row
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="font-family: var(--font-mono); font-weight:600;">${row.case_id || 'N/A'}</td>
-                    <td><span class="tag-pill">${row.concept_tag || 'General'}</span></td>
-                    <td>${row.osi_layer || 'N/A'}</td>
-                    <td>${row.confidence || 'N/A'}</td>
-                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.root_cause}">${row.root_cause || ''}</td>
-                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.expected_fault}">${row.expected_fault || ''}</td>
-                    <td class="status-agrees-${agrees}">${agrees ? 'Yes' : 'No'}</td>
-                    <td><span class="badge-status status-${status}">${status}</span></td>
-                `;
-                tableBody.appendChild(tr);
-            });
-
-            // Update KPIs
-            const agreePct = Math.round((aiAgreesCount / total) * 100);
-            document.getElementById('val-ai-agree').textContent = `${agreePct}%`;
-
-            const acceptPct = Math.round((reviewCounts.Accepted / total) * 100);
-            document.getElementById('val-human-accept').textContent = `${acceptPct}%`;
-            document.getElementById('val-human-edit').textContent = reviewCounts.Edited + reviewCounts.Rejected;
-
-            renderBarChart(tagCounts);
-            renderDonutChart(reviewCounts);
         }
+    }
 
-        function renderBarChart(tagCounts) {
-            const ctx = document.getElementById('barChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(tagCounts),
-                    datasets: [{
-                        label: 'Case Count',
-                        data: Object.values(tagCounts),
-                        backgroundColor: 'rgba(59, 130, 246, 0.65)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1.5,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { precision: 0, color: '#9ca3af' },
-                            grid: { color: 'rgba(255, 255, 255, 0.06)' }
-                        },
-                        x: {
-                            ticks: { color: '#9ca3af' },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
+    return {
+        root_cause: 'Unable to isolate root cause from provided output',
+        osi_layer: 'Unknown', confidence: 'low',
+        evidence: 'Insufficient evidence in show output',
+        next_command: 'show ip interface brief',
+        fix_steps: ['Collect additional show outputs','Verify physical connectivity'],
+        concept_tag: 'Unknown'
+    };
+}
 
-        function renderDonutChart(reviewCounts) {
-            const ctx = document.getElementById('donutChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Accepted', 'Edited', 'Rejected', 'Pending Review'],
-                    datasets: [{
-                        data: [
-                            reviewCounts.Accepted,
-                            reviewCounts.Edited,
-                            reviewCounts.Rejected,
-                            reviewCounts.Pending
-                        ],
-                        backgroundColor: [
-                            'rgba(16, 185, 129, 0.8)',
-                            'rgba(245, 158, 11, 0.8)',
-                            'rgba(239, 68, 68, 0.8)',
-                            'rgba(156, 163, 175, 0.4)'
-                        ],
-                        borderColor: '#0b0f19',
-                        borderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#9ca3af', font: { family: 'Inter', size: 12 } }
-                        }
-                    },
-                    cutout: '70%'
-                }
-            });
+function extractEv(show, re) {
+    for (const line of show.split(/\||\n/)) {
+        if (re.test(line)) return line.trim().substring(0, 140);
+    }
+    return 'Pattern detected in show-command output';
+}
+
+function showResult(r) {
+    const body = document.getElementById('resultBody');
+    const steps = r.fix_steps.map(s => `<li>${s}</li>`).join('');
+
+    body.innerHTML = `
+        <div class="result-field">
+            <div class="rf-label">Root Cause</div>
+            <div class="rf-value">${r.root_cause}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="result-field">
+                <div class="rf-label">OSI Layer</div>
+                <div class="rf-value">${r.osi_layer}</div>
+            </div>
+            <div class="result-field">
+                <div class="rf-label">Confidence</div>
+                <div class="rf-value"><sl-badge variant="${r.confidence==='high'?'success':'warning'}" pill>${r.confidence}</sl-badge></div>
+            </div>
+        </div>
+        <div class="result-field">
+            <div class="rf-label">Evidence</div>
+            <div class="rf-value rf-mono">${r.evidence}</div>
+        </div>
+        <div class="result-field">
+            <div class="rf-label">Next Command</div>
+            <div class="rf-value rf-mono">${r.next_command}</div>
+        </div>
+        <div class="result-field">
+            <div class="rf-label">Fix Steps</div>
+            <ol class="fix-list">${steps}</ol>
+        </div>
+    `;
+
+    document.getElementById('resultBadge').innerHTML =
+        `<sl-badge variant="primary" pill>${r.concept_tag} — ${r.confidence}</sl-badge>`;
+    document.getElementById('reviewBar').classList.add('show');
+}
+
+function clearForm() {
+    document.getElementById('inSymptom').value = '';
+    document.getElementById('inTopology').value = '';
+    document.getElementById('inShowOutput').value = '';
+    document.getElementById('resultBody').innerHTML = `
+        <div class="empty-state">
+            <sl-icon name="cpu"></sl-icon>
+            <p>Paste case data and run diagnosis to see the AI analysis</p>
+        </div>`;
+    document.getElementById('resultBadge').innerHTML = '';
+    document.getElementById('reviewBar').classList.remove('show');
+}
+
+function review(status) {
+    const note = document.getElementById('reviewNote').value.trim();
+    if (!note) {
+        const t = document.createElement('sl-alert');
+        t.variant = 'warning'; t.closable = true; t.duration = 3000;
+        t.innerHTML = '<sl-icon slot="icon" name="exclamation-triangle"></sl-icon>Enter a reviewer note first.';
+        document.body.appendChild(t);
+        t.toast();
+        return;
+    }
+    const bar = document.getElementById('reviewBar');
+    const variant = status === 'Accepted' ? 'success' : status === 'Edited' ? 'warning' : 'danger';
+    bar.innerHTML = `<sl-badge variant="${variant}" pill style="font-size:13px;">${status}</sl-badge><span style="font-size:12px;color:var(--ns-text-muted);">${note}</span>`;
+
+    const t = document.createElement('sl-alert');
+    t.variant = variant; t.closable = true; t.duration = 4000;
+    t.innerHTML = `<sl-icon slot="icon" name="${status==='Accepted'?'check-circle':status==='Edited'?'pencil':'x-circle'}"></sl-icon>Review submitted: <strong>${status}</strong>`;
+    document.body.appendChild(t);
+    t.toast();
+}
+
+/* ══════════════════════════════════════════════
+   DASHBOARD
+   ══════════════════════════════════════════════ */
+function renderDash() {
+    const n = DATA.length; if (!n) return;
+    let agree = 0;
+    const tags = {}, reviews = { Accepted: 0, Edited: 0, Rejected: 0, Pending: 0 }, osi = {};
+
+    DATA.forEach(r => {
+        if (r.agrees === 'True' || r.agrees === 'true') agree++;
+        const t = r.concept_tag || 'Other';
+        tags[t] = (tags[t] || 0) + 1;
+        const s = (r.review_status || 'Pending').trim();
+        reviews[s] = (reviews[s] || 0) + 1;
+        const o = r.osi_layer || 'Unknown';
+        osi[o] = (osi[o] || 0) + 1;
+    });
+
+    document.getElementById('mTotal').textContent = n;
+    document.getElementById('mAgree').textContent = Math.round(agree / n * 100) + '%';
+    document.getElementById('mAccepted').textContent = Math.round(reviews.Accepted / n * 100) + '%';
+    document.getElementById('mCorrections').textContent = reviews.Edited + reviews.Rejected;
+
+    const mono = "'JetBrains Mono', monospace";
+    const sans = "'Inter', sans-serif";
+
+    // Bar
+    const bCtx = document.getElementById('cBar').getContext('2d');
+    if (window._c1) window._c1.destroy();
+    window._c1 = new Chart(bCtx, {
+        type: 'bar',
+        data: { labels: Object.keys(tags), datasets: [{ data: Object.values(tags), backgroundColor: '#0ea5e9', borderRadius: 4, barThickness: 28 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0, color: '#71717a', font: { family: mono, size: 10 } }, grid: { color: '#1e1e22' } },
+                x: { ticks: { color: '#a1a1aa', font: { family: sans, size: 11 } }, grid: { display: false } }
+            }
         }
-    </script>
+    });
+
+    // Donut
+    const dCtx = document.getElementById('cDonut').getContext('2d');
+    if (window._c2) window._c2.destroy();
+    window._c2 = new Chart(dCtx, {
+        type: 'doughnut',
+        data: { labels: ['Accepted','Edited','Rejected','Pending'], datasets: [{ data: [reviews.Accepted, reviews.Edited, reviews.Rejected, reviews.Pending], backgroundColor: ['#22c55e','#eab308','#ef4444','#3f3f46'], borderColor: '#09090b', borderWidth: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { position: 'bottom', labels: { color: '#a1a1aa', font: { family: sans, size: 11 }, padding: 16 } } } }
+    });
+
+    // OSI horizontal
+    const oCtx = document.getElementById('cOsi').getContext('2d');
+    if (window._c3) window._c3.destroy();
+    window._c3 = new Chart(oCtx, {
+        type: 'bar',
+        data: { labels: Object.keys(osi), datasets: [{ data: Object.values(osi), backgroundColor: '#8b5cf6', borderRadius: 4, barThickness: 28 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { precision: 0, color: '#71717a', font: { size: 10 } }, grid: { color: '#1e1e22' } },
+                y: { ticks: { color: '#a1a1aa', font: { family: sans, size: 11 } }, grid: { display: false } }
+            }
+        }
+    });
+
+    // Severity / concept polar area
+    const sCtx = document.getElementById('cSev').getContext('2d');
+    if (window._c4) window._c4.destroy();
+    const tagKeys = Object.keys(tags);
+    const colors = ['#0ea5e9','#22c55e','#eab308','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+    window._c4 = new Chart(sCtx, {
+        type: 'polarArea',
+        data: { labels: tagKeys, datasets: [{ data: tagKeys.map(k => tags[k]), backgroundColor: tagKeys.map((_, i) => colors[i % colors.length] + '88'), borderColor: '#09090b', borderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+            scales: { r: { ticks: { display: false }, grid: { color: '#1e1e22' } } },
+            plugins: { legend: { position: 'bottom', labels: { color: '#a1a1aa', font: { family: sans, size: 11 }, padding: 12 } } }
+        }
+    });
+}
+
+/* ══════════════════════════════════════════════
+   RESPONSIBLE AI LOG
+   ══════════════════════════════════════════════ */
+const RAI = [
+    { id: 1, title: 'C007/C019 — Layer 1 Physical Link Misclassified as Routing', ai: 'AI identified Serial0/0/0 as admin down and recommended "no shutdown", but tagged it as a Routing issue.', correct: 'Root cause is Layer 1 physical interface state (admin down), not a routing protocol error.', why: 'AI fixated on symptom wording ("static route configured but ping fails") and routing table presence, overriding the physical link evidence.' },
+    { id: 2, title: 'C005/C017/C029 — Static IP Conflict Tagged as DHCP', ai: 'AI diagnosed duplicate static IPs correctly, but classified under DHCP concept tag.', correct: 'Static IP conflicts bypass DHCP entirely — this is a host configuration issue.', why: 'The keyword "DHCP" in the show ip dhcp conflict command output biased the classifier despite static addressing being in use.' },
+    { id: 3, title: 'C004/C016/C028 — Evidence Contains Synthesized Quotes', ai: 'Evidence field combined symptom text with router output into one sentence.', correct: 'Evidence must exclusively quote text from show_output, not paraphrase or merge sources.', why: 'The model paraphrased and combined user symptom descriptions with show-command outputs, violating strict grounding rules.' },
+    { id: 4, title: 'C009/C021 — Fix Steps Lack Safety Warnings', ai: 'Recommended "clear ip nat translation *" immediately to resolve NAT conflict.', correct: 'Clearing all NAT translations severs every active TCP session — needs maintenance window warning.', why: 'Model treats troubleshooting as a lab exercise, lacking operational awareness of production change-window policies.' },
+    { id: 5, title: 'C006/C018/C030 — Arbitrary Router Baseline Selection', ai: 'Recommended changing R2 timers to match R1, assuming R1 is authoritative.', correct: 'Without network standards documentation, either configuration could be the intended baseline.', why: 'AI defaults to first-listed device as "correct" baseline — an arbitrary assumption in multi-device troubleshooting.' }
+];
+
+function renderRAI() {
+    const w = document.getElementById('raiWrap');
+    w.innerHTML = '';
+    RAI.forEach(item => {
+        w.innerHTML += `
+        <div class="rai-card">
+            <div class="rai-header">
+                <div class="rai-num">${item.id}</div>
+                <span>${item.title}</span>
+            </div>
+            <div class="rai-body">
+                <div class="rai-section"><div class="rai-label">What the AI Said</div><div class="rai-text">${item.ai}</div></div>
+                <div class="rai-section"><div class="rai-label">What Was Actually Correct</div><div class="rai-text">${item.correct}</div></div>
+                <div class="rai-section"><div class="rai-label">Why the AI Likely Got It Wrong</div><div class="rai-text">${item.why}</div></div>
+            </div>
+        </div>`;
+    });
+}
+
+/* ══════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', loadCSV);
+</script>
 </body>
 </html>
