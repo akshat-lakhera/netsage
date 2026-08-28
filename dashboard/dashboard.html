@@ -1256,7 +1256,10 @@ function loadCSV() {
             download: true, header: true, skipEmptyLines: true,
             complete(r) {
                 if (r.data && r.data.length > 0) {
-                    DATA = r.data;
+                    DATA = r.data.map(row => {
+                        const base = (typeof EMBEDDED_DATA !== 'undefined' ? EMBEDDED_DATA : []).find(b => b.case_id === row.case_id) || {};
+                        return { ...base, ...row };
+                    });
                     renderTable(DATA);
                     buildPills();
                 }
