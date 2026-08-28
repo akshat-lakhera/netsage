@@ -63,11 +63,14 @@ python scripts/generate_variants.py
 python scripts/run_diagnosis.py
 ```
 
-### 2. Analytics Dashboard
+### 2. Interactive Web UI & Analytics Dashboard
 
-Open [`dashboard/dashboard.html`](file:///E:/netsage-ai/dashboard/dashboard.html) directly in any web browser to view:
-- Bar chart: Case breakdown across concept tags (`VLAN`, `Gateway`, `DHCP`, `DNS`, `Routing`, `ACL`, `NAT`, `Wireless`).
-- Donut chart: Human review agreement rate (`Accepted` vs `Edited` vs `Rejected`).
+Open [`dashboard/dashboard.html`](file:///E:/netsage-ai/dashboard/dashboard.html) directly in any web browser (no build step or server required!):
+- **Live Diagnosis**: Paste symptoms + topology notes + show output, pick your AI Engine (**Gemini 2.0 Flash**, **OpenAI GPT-4o-mini**, or **Deterministic Local Rules**), and run real-time diagnosis.
+- **Mandatory Human Review**: Conduct human review inline (`Accept`, `Edit`, `Reject`) with reviewer notes before any diagnosis is marked as verified.
+- **Case Browser**: Interactive data table of all 30 cases with concept tag filter pills, live search, and modal inspection.
+- **Analytics Dashboard**: 4 key metric cards + 4 responsive Chart.js visualisations (Fault distribution bar, Review agreement donut, OSI layer horizontal chart, and Concept polar area chart).
+- **Responsible AI Log**: In-depth breakdown of 5 failure modes and boundary cases with root-cause analysis.
 
 ### 3. Interactive Go CLI / TUI Engine (ai-tac Engine)
 
