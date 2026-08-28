@@ -1666,10 +1666,14 @@ function parseAIResponse(raw) {
 function toast(variant, msg) {
     const t = document.createElement('sl-alert');
     t.variant = variant; t.closable = true; t.duration = 4000;
-    const icon = variant === 'warning' ? 'exclamation-triangle' : variant === 'danger' ? 'x-circle' : 'info-circle';
+    const icon = variant === 'warning' ? 'exclamation-triangle' : variant === 'danger' ? 'x-circle' : variant === 'success' ? 'check-circle' : 'info-circle';
     t.innerHTML = `<sl-icon slot="icon" name="${icon}"></sl-icon>${msg}`;
     document.body.appendChild(t);
-    t.toast();
+    customElements.whenDefined('sl-alert').then(() => {
+        if (typeof t.toast === 'function') {
+            t.toast();
+        }
+    });
 }
 
 /* ── Local Rule Engine (fallback) ── */
