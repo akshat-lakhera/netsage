@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetSage AI — AI Troubleshooting Assistant Dashboard</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js & PapaParse CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #0b0f19;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-card-hover: rgba(30, 41, 59, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1320px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .tag-pill {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* Metrics grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .metric-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .metric-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0.25rem 0;
+            font-family: var(--font-mono);
+        }
+
+        .metric-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Charts Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+        }
+
+        .canvas-container {
+            position: relative;
+            flex-grow: 1;
+            min-height: 280px;
+            width: 100%;
+        }
+
+        /* Data table */
+        .table-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        tr:hover td {
+            background: var(--bg-card-hover);
+        }
+
+        .badge-status {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        .status-Accepted {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-Edited {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-Rejected {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-Pending {
+            background: rgba(156, 163, 175, 0.15);
+            color: #d1d5db;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+
+        .status-agrees-true {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .status-agrees-false {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <div class="brand-badge">NS</div>
+                <div>
+                    <h1>NetSage AI Dashboard</h1>
+                    <div class="subtitle">AI Packet Tracer Troubleshooting Assistant & Mandatory Human Review Analytics</div>
+                </div>
+            </div>
+            <div class="tag-pill">Course: Modern AI</div>
+        </header>
+
+        <!-- KPI Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-title">Total Cases</div>
+                <div class="metric-value" id="val-total">0</div>
+                <div class="metric-desc">Packet Tracer troubleshooting cases</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">AI Direct Agreement</div>
+                <div class="metric-value" id="val-ai-agree" style="color: var(--accent-cyan);">0%</div>
+                <div class="metric-desc">Matched expected fault automatically</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Human Acceptance Rate</div>
+                <div class="metric-value" id="val-human-accept" style="color: var(--accent-green);">0%</div>
+                <div class="metric-desc">Accepted diagnoses upon review</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Human Edits / Rejections</div>
+                <div class="metric-value" id="val-human-edit" style="color: var(--accent-amber);">0</div>
+                <div class="metric-desc">Required human correction</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">Troubleshooting Case Breakdown by Concept Tag</div>
+                <div class="chart-subtitle">Distribution of cases across networking fault categories</div>
+                <div class="canvas-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Human Review Decision Breakdown</div>
+                <div class="chart-subtitle">Mandatory reviewer verdict (AI vs Human Agreement Rate)</div>
+                <div class="canvas-container">
+                    <canvas id="donutChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-card">
+            <div class="chart-title">Case Results & Human Review Log</div>
+            <div class="chart-subtitle">Live evaluation data loaded from <code>results/ai_results.csv</code></div>
+            <div class="table-wrapper">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Case ID</th>
+                            <th>Concept Tag</th>
+                            <th>OSI Layer</th>
+                            <th>Confidence</th>
+                            <th>AI Root Cause</th>
+                            <th>Expected Fault</th>
+                            <th>AI Agreement</th>
+                            <th>Review Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-secondary);">Loading CSV data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const csvPath = '../results/ai_results.csv';
+
+            Papa.parse(csvPath, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processAndRenderData(results.data);
+                },
+                error: function(err) {
+                    console.error("Error loading CSV:", err);
+                    document.getElementById('tableBody').innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--accent-red);">
+                                Unable to load results/ai_results.csv. Run run_diagnosis.py to generate results.
+                            </td>
+                        </tr>`;
+                }
+            });
+        });
+
+        function processAndRenderData(data) {
+            const total = data.length;
+            document.getElementById('val-total').textContent = total;
+
+            if (total === 0) return;
+
+            // Concept Tags counting
+            const tagCounts = {
+                'VLAN': 0, 'Gateway': 0, 'DHCP': 0, 'DNS': 0,
+                'Routing': 0, 'ACL': 0, 'NAT': 0, 'Wireless': 0
+            };
+
+            // Review status counting
+            const reviewCounts = {
+                'Accepted': 0,
+                'Edited': 0,
+                'Rejected': 0,
+                'Pending': 0
+            };
+
+            let aiAgreesCount = 0;
+
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            data.forEach(row => {
+                // Count tags
+                let tag = row.concept_tag || 'Uncategorized';
+                // Normalize tag lookup
+                const matchKey = Object.keys(tagCounts).find(k => k.toLowerCase() === tag.toLowerCase());
+                if (matchKey) {
+                    tagCounts[matchKey]++;
+                } else {
+                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                }
+
+                // Count agrees
+                const agrees = (row.agrees === 'true' || row.agrees === 'True' || row.agrees === true);
+                if (agrees) aiAgreesCount++;
+
+                // Count status
+                let status = row.review_status ? row.review_status.trim() : 'Pending';
+                if (!['Accepted', 'Edited', 'Rejected'].includes(status)) {
+                    status = 'Pending';
+                }
+                reviewCounts[status]++;
+
+                // Append table row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-family: var(--font-mono); font-weight:600;">${row.case_id || 'N/A'}</td>
+                    <td><span class="tag-pill">${row.concept_tag || 'General'}</span></td>
+                    <td>${row.osi_layer || 'N/A'}</td>
+                    <td>${row.confidence || 'N/A'}</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.root_cause}">${row.root_cause || ''}</td>
+                    <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${row.expected_fault}">${row.expected_fault || ''}</td>
+                    <td class="status-agrees-${agrees}">${agrees ? 'Yes' : 'No'}</td>
+                    <td><span class="badge-status status-${status}">${status}</span></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Update KPIs
+            const agreePct = Math.round((aiAgreesCount / total) * 100);
+            document.getElementById('val-ai-agree').textContent = `${agreePct}%`;
+
+            const acceptPct = Math.round((reviewCounts.Accepted / total) * 100);
+            document.getElementById('val-human-accept').textContent = `${acceptPct}%`;
+            document.getElementById('val-human-edit').textContent = reviewCounts.Edited + reviewCounts.Rejected;
+
+            renderBarChart(tagCounts);
+            renderDonutChart(reviewCounts);
+        }
+
+        function renderBarChart(tagCounts) {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(tagCounts),
+                    datasets: [{
+                        label: 'Case Count',
+                        data: Object.values(tagCounts),
+                        backgroundColor: 'rgba(59, 130, 246, 0.65)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: '#9ca3af' },
+                            grid: { color: 'rgba(255, 255, 255, 0.06)' }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDonutChart(reviewCounts) {
+            const ctx = document.getElementById('donutChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Accepted', 'Edited', 'Rejected', 'Pending Review'],
+                    datasets: [{
+                        data: [
+                            reviewCounts.Accepted,
+                            reviewCounts.Edited,
+                            reviewCounts.Rejected,
+                            reviewCounts.Pending
+                        ],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(156, 163, 175, 0.4)'
+                        ],
+                        borderColor: '#0b0f19',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#9ca3af', font: { family: 'Inter', size: 12 } }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+    </script>
+</body>
+</html>
