@@ -217,6 +217,75 @@
 
         .empty-state sl-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.3; }
 
+        /* ═══ CASE SELECTOR & AUTOCOMPLETE (COMPULSORY) ═══ */
+        .case-selector-wrap {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        .suggestions-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: var(--ns-surface-2);
+            border: 1px solid var(--ns-border);
+            border-radius: 8px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+            max-height: 290px;
+            overflow-y: auto;
+            z-index: 200;
+            display: none;
+        }
+        .suggestions-dropdown.open {
+            display: block;
+        }
+        .suggestion-item {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer;
+            transition: all 120ms ease;
+        }
+        .suggestion-item:hover, .suggestion-item.active {
+            background: rgba(14,165,233,0.12);
+        }
+        .suggestion-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .suggestion-id {
+            font-family: var(--ns-mono);
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--ns-accent);
+        }
+        .suggestion-symptom {
+            font-size: 12px;
+            color: var(--ns-text);
+            font-weight: 500;
+            line-height: 1.4;
+        }
+        .suggestion-fault {
+            font-size: 11px;
+            color: var(--ns-text-dim);
+            margin-top: 3px;
+        }
+        .selected-case-chip {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(34,197,94,0.1);
+            border: 1px solid rgba(34,197,94,0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            font-size: 12px;
+        }
+        .selected-case-chip.show {
+            display: flex;
+        }
+
         /* ═══ RESULT FIELDS ═══ */
         .result-field { margin-bottom: 14px; }
         .result-field .rf-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ns-text-dim); margin-bottom: 3px; }
@@ -408,17 +477,38 @@
                         <p>Provide troubleshooting context from your Packet Tracer lab</p>
                     </div>
                     <div class="panel-body">
+                        <!-- Compulsory Semantic Case Selector -->
+                        <div class="case-selector-wrap">
+                            <label style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:var(--ns-text-muted);margin-bottom:6px;">
+                                <span>Select Packet Tracer Lab Case <span style="color:var(--ns-red);font-weight:700;">* (Compulsory)</span></span>
+                                <span style="font-size:10px;color:var(--ns-text-dim);font-family:var(--ns-mono);">Type to filter 30 cases</span>
+                            </label>
+                            <sl-input id="caseSearchInput" placeholder="Type keyword (e.g. VLAN, ACL, C001, PC1, DHCP, OSPF, Wi-Fi)..." size="medium" clearable>
+                                <sl-icon slot="prefix" name="search"></sl-icon>
+                            </sl-input>
+                            <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
+                        </div>
+
+                        <!-- Selected Case Indicator Chip -->
+                        <div class="selected-case-chip" id="selectedCaseChip">
+                            <div style="display:flex;align-items:center;gap:8px;overflow:hidden;">
+                                <sl-badge variant="success" pill>Case Selected</sl-badge>
+                                <span id="selectedCaseText" style="font-family:var(--ns-mono);font-weight:600;color:var(--ns-text);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;"></span>
+                            </div>
+                            <sl-button size="small" variant="text" onclick="clearCaseSelection()" style="color:var(--ns-accent);flex-shrink:0;">Change</sl-button>
+                        </div>
+
                         <div class="form-group">
                             <label>Symptom</label>
-                            <sl-input id="inSymptom" placeholder="e.g. PC1 gets IP but cannot reach server in VLAN30" size="medium"></sl-input>
+                            <sl-input id="inSymptom" placeholder="Auto-populated from selected lab case" size="medium"></sl-input>
                         </div>
                         <div class="form-group">
                             <label>Topology Note</label>
-                            <sl-input id="inTopology" placeholder="e.g. R1 trunk to SW1, VLAN30=Server, VLAN10=PC1" size="medium"></sl-input>
+                            <sl-input id="inTopology" placeholder="Auto-populated from selected lab case" size="medium"></sl-input>
                         </div>
                         <div class="form-group">
                             <label>Show-Command Output</label>
-                            <sl-textarea id="inShowOutput" rows="6" placeholder="Paste show ip route, show access-lists, ipconfig output etc. Separate lines with | character" resize="vertical" size="medium"></sl-textarea>
+                            <sl-textarea id="inShowOutput" rows="6" placeholder="Auto-populated from selected lab case" resize="vertical" size="medium"></sl-textarea>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <sl-button variant="primary" id="btnDiagnose" onclick="runDiagnosis()">
@@ -1222,9 +1312,118 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ══════════════════════════════════════════════
+   SEMANTIC CASE SELECTOR (COMPULSORY)
+   ══════════════════════════════════════════════ */
+let currentSelectedCase = null;
+
+function initCaseAutocomplete() {
+    const input = document.getElementById('caseSearchInput');
+    const dropdown = document.getElementById('suggestionsDropdown');
+    if (!input || !dropdown) return;
+
+    function renderSuggestions(query = '') {
+        const q = query.trim().toLowerCase();
+        let matches = DATA;
+        if (q) {
+            matches = DATA.filter(c => 
+                (c.case_id || '').toLowerCase().includes(q) ||
+                (c.concept_tag || '').toLowerCase().includes(q) ||
+                (c.symptom || '').toLowerCase().includes(q) ||
+                (c.expected_fault || '').toLowerCase().includes(q) ||
+                (c.osi_layer || '').toLowerCase().includes(q)
+            );
+        }
+
+        if (matches.length === 0) {
+            dropdown.innerHTML = '<div style="padding:16px;color:var(--ns-text-dim);font-size:12px;text-align:center;">No matching lab cases found for "' + escapeHtml(query) + '"</div>';
+            dropdown.classList.add('open');
+            return;
+        }
+
+        dropdown.innerHTML = matches.slice(0, 10).map(c => `
+            <div class="suggestion-item" onclick="selectCase('${c.case_id}')">
+                <div class="suggestion-header">
+                    <span class="suggestion-id">${c.case_id}</span>
+                    <sl-badge variant="primary" pill style="font-size:10px;">${c.concept_tag || 'Lab'}</sl-badge>
+                    <span style="font-size:10px;color:var(--ns-text-dim);margin-left:auto;font-family:var(--ns-mono);">${c.osi_layer || ''}</span>
+                </div>
+                <div class="suggestion-symptom">${escapeHtml(c.symptom || '')}</div>
+                <div class="suggestion-fault"><strong style="color:var(--ns-text-muted);">Expected Fault:</strong> ${escapeHtml(c.expected_fault || '')}</div>
+            </div>
+        `).join('');
+        dropdown.classList.add('open');
+    }
+
+    input.addEventListener('sl-input', () => {
+        renderSuggestions(input.value || '');
+    });
+
+    input.addEventListener('sl-focus', () => {
+        renderSuggestions(input.value || '');
+    });
+
+    input.addEventListener('sl-clear', () => {
+        clearCaseSelection();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.case-selector-wrap')) {
+            dropdown.classList.remove('open');
+        }
+    });
+}
+
+function escapeHtml(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function selectCase(caseId) {
+    const found = DATA.find(c => c.case_id === caseId);
+    if (!found) return;
+
+    currentSelectedCase = found;
+    document.getElementById('inSymptom').value = found.symptom || '';
+    document.getElementById('inTopology').value = found.topology_note || '';
+    document.getElementById('inShowOutput').value = found.show_output || '';
+
+    document.getElementById('selectedCaseText').textContent = `${found.case_id} [${found.concept_tag}] — ${found.expected_fault}`;
+    document.getElementById('selectedCaseChip').classList.add('show');
+    document.getElementById('caseSearchInput').value = `${found.case_id}: ${found.expected_fault}`;
+    document.getElementById('suggestionsDropdown').classList.remove('open');
+
+    toast('success', `Case <strong>${found.case_id}</strong> selected. Ready for diagnosis.`);
+}
+
+function clearCaseSelection() {
+    currentSelectedCase = null;
+    document.getElementById('selectedCaseChip').classList.remove('show');
+    document.getElementById('selectedCaseText').textContent = '';
+    document.getElementById('caseSearchInput').value = '';
+    document.getElementById('inSymptom').value = '';
+    document.getElementById('inTopology').value = '';
+    document.getElementById('inShowOutput').value = '';
+}
+
+/* ══════════════════════════════════════════════
    DIAGNOSIS ENGINE
    ══════════════════════════════════════════════ */
 async function runDiagnosis() {
+    // COMPULSORY CASE SELECTION ENFORCEMENT
+    if (!currentSelectedCase) {
+        toast('warning', 'Compulsory Selection: You must select a lab case from the suggestions dropdown before running diagnosis.');
+        const searchIn = document.getElementById('caseSearchInput');
+        if (searchIn) {
+            searchIn.focus();
+            const dd = document.getElementById('suggestionsDropdown');
+            if (dd) {
+                dd.classList.add('open');
+                // Trigger suggestions render
+                searchIn.dispatchEvent(new Event('sl-focus'));
+            }
+        }
+        return;
+    }
+
     const sym = document.getElementById('inSymptom').value.trim();
     const topo = document.getElementById('inTopology').value.trim();
     const show = document.getElementById('inShowOutput').value.trim();
@@ -1443,13 +1642,11 @@ function showResult(r) {
 }
 
 function clearForm() {
-    document.getElementById('inSymptom').value = '';
-    document.getElementById('inTopology').value = '';
-    document.getElementById('inShowOutput').value = '';
+    clearCaseSelection();
     document.getElementById('resultBody').innerHTML = `
         <div class="empty-state">
             <sl-icon name="cpu"></sl-icon>
-            <p>Paste case data and run diagnosis to see the AI analysis</p>
+            <p>Select a lab case from the dropdown above and run diagnosis</p>
         </div>`;
     document.getElementById('resultBadge').innerHTML = '';
     document.getElementById('reviewBar').classList.remove('show');
@@ -1578,7 +1775,10 @@ function renderRAI() {
 /* ══════════════════════════════════════════════
    INIT
    ══════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', loadCSV);
+document.addEventListener('DOMContentLoaded', () => {
+    loadCSV();
+    initCaseAutocomplete();
+});
 </script>
 </body>
 </html>
