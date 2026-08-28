@@ -1,7 +1,22 @@
 # NetSage AI — AI Troubleshooting Assistant for Packet Tracer Labs
 
 > **Course**: Modern AI | **Domain**: Networking Labs  
-> **Safety Rule**: Mandatory human review on every AI diagnosis (AI never auto-applies a fix).
+> **Safety Rule**: Mandatory human review on every AI diagnosis (AI never auto-applies a fix).  
+> **Live Production App**: **[https://akshat-lakhera.github.io/netsage/](https://akshat-lakhera.github.io/netsage/)**  
+> **Verification Report**: **[MCP Test Report (5/5 Passed)](MCP_TEST_REPORT.md)** | **Demo Guide**: **[5-10 Min Demo Walkthrough](DEMO_WALKTHROUGH.md)**
+
+---
+
+## 🌐 Live Web Application
+
+The production application is deployed and live on **GitHub Pages**:
+
+| Deployment | URL | Status |
+|---|---|:---:|
+| **Live Web App** | **[https://akshat-lakhera.github.io/netsage/](https://akshat-lakhera.github.io/netsage/)** | 🟢 **Live / Active** |
+| **Direct Dashboard** | **[https://akshat-lakhera.github.io/netsage/dashboard/dashboard.html](https://akshat-lakhera.github.io/netsage/dashboard/dashboard.html)** | 🟢 **Live / Active** |
+| **MCP Test Report** | **[`MCP_TEST_REPORT.md`](MCP_TEST_REPORT.md)** | ✅ **5/5 Passed** |
+| **Video Walkthrough Script** | **[`DEMO_WALKTHROUGH.md`](DEMO_WALKTHROUGH.md)** | 🎬 **Ready** |
 
 ---
 
@@ -20,22 +35,26 @@ netsage-ai/
 ├── prompts/
 │   └── diagnose_prompt.md         # Structured system prompt enforcing JSON schema and worked examples
 ├── scripts/
-│   ├── rule_checker.py            # Deterministic Python checker (Duplicate IP, Mask, Gateway, Route)
+│   ├── rule_checker.py            # Deterministic Python checker (Duplicate IP, Mask, Gateway, Route, Interface, VLAN)
 │   ├── run_diagnosis.py           # Evaluates dataset using LLM API and computes agreement
 │   ├── generate_variants.py       # Generator producing 15 variants from 15 base cases
 │   └── build_dashboard.py         # Dashboard dataset statistics validator
 ├── dashboard/
-│   └── dashboard.html             # Client-side analytics dashboard (PapaParse + Chart.js)
+│   └── dashboard.html             # Full web UI (Shoelace components, Chart.js, live AI diagnosis, human review)
 ├── logs/
 │   └── responsible_ai_log.md      # Detailed failure analysis of top AI diagnostic errors
 ├── results/
-│   ├── ai_results.csv             # AI diagnosis outputs + human review verdicts
-│   └── rule_checker_sample_output.txt  # Sample output from rule_checker.py
+│   ├── ai_results.csv             # 30 cases with AI diagnosis outputs + human review verdicts
+│   └── rule_checker_sample_output.txt  # Captured output from rule_checker.py
 ├── cmd/
 │   ├── cli/main.go                # Interactive Go CLI engine (integrated from ai-tac)
 │   └── tui/main.go                # Terminal User Interface for interactive troubleshooting
-├── go.mod / go.sum                # Go package dependencies
-└── README.md                      # Project documentation
+├── MCP_TEST_REPORT.md             # Automated test report from Chrome DevTools MCP (5/5 passed)
+├── DEMO_WALKTHROUGH.md            # 5-10 minute presentation & video recording cue sheet
+├── run_locally.bat                # 1-click local Windows batch launcher
+├── run_locally.py                 # Cross-platform Python local server runner
+├── vercel.json                    # Vercel deployment rewrite rules
+└── README.md                      # Complete project documentation
 ```
 
 ---
