@@ -373,6 +373,21 @@
             <sl-icon name="shield"></sl-icon> Responsible AI
         </button>
 
+        <div class="nav-section">AI Config</div>
+        <div style="padding:4px 10px;">
+            <label style="font-size:11px;font-weight:600;color:var(--ns-text-dim);display:block;margin-bottom:4px;">Engine</label>
+            <sl-select id="aiEngine" value="local" size="small" style="width:100%;">
+                <sl-option value="local">Local Rules</sl-option>
+                <sl-option value="gemini">Gemini AI</sl-option>
+                <sl-option value="openai">OpenAI</sl-option>
+            </sl-select>
+        </div>
+        <div style="padding:4px 10px;margin-top:6px;" id="apiKeyWrap">
+            <label style="font-size:11px;font-weight:600;color:var(--ns-text-dim);display:block;margin-bottom:4px;">API Key</label>
+            <sl-input id="apiKeyInput" type="password" size="small" placeholder="Paste API key" password-toggle></sl-input>
+            <div style="font-size:10px;color:var(--ns-text-dim);margin-top:3px;">Key stays in browser only</div>
+        </div>
+
         <div class="sidebar-footer">
             <span class="live-dot"></span> System Online
         </div>
@@ -405,11 +420,12 @@
                             <label>Show-Command Output</label>
                             <sl-textarea id="inShowOutput" rows="6" placeholder="Paste show ip route, show access-lists, ipconfig output etc. Separate lines with | character" resize="vertical" size="medium"></sl-textarea>
                         </div>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
                             <sl-button variant="primary" id="btnDiagnose" onclick="runDiagnosis()">
                                 <sl-icon slot="prefix" name="cpu"></sl-icon> Run Diagnosis
                             </sl-button>
                             <sl-button variant="default" onclick="clearForm()">Clear</sl-button>
+                            <sl-badge id="engineBadge" variant="neutral" pill style="margin-left:auto;">Local Rules</sl-badge>
                         </div>
                     </div>
                 </div>
@@ -715,31 +731,166 @@ function openDetail(r) {
 }
 
 /* ══════════════════════════════════════════════
-   DIAGNOSIS ENGINE (deterministic local rules)
+   AI ENGINE CONFIG
    ══════════════════════════════════════════════ */
-function runDiagnosis() {
+const SYSTEM_PROMPT = `You are NetSage AI, an expert network troubleshooting assistant for Cisco Packet Tracer labs. Analyze the symptom, topology, and show-command output provided. Return ONLY valid JSON with these exact keys:
+{
+  "root_cause": "one-sentence diagnosis",
+  "osi_layer": "Layer 1|Layer 2|Layer 3|Layer 3/4|Layer 4|Layer 7",
+  "confidence": "high|medium|low",
+  "evidence": "exact quote from show-command output proving the fault",
+  "next_command": "the single most useful next show/debug command",
+  "fix_steps": ["step 1", "step 2"],
+  "concept_tag": "VLAN|Routing|DHCP|DNS|ACL|NAT|Gateway|Wireless"
+}
+Rules: evidence MUST quote directly from show output, never paraphrase. confidence=high only when evidence is conclusive. Do NOT auto-apply fixes — recommend only.`;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const engineSel = document.getElementById('aiEngine');
+    if (engineSel) {
+        engineSel.addEventListener('sl-change', () => {
+            const v = engineSel.value;
+            document.getElementById('engineBadge').textContent =
+                v === 'gemini' ? 'Gemini AI' : v === 'openai' ? 'OpenAI' : 'Local Rules';
+            document.getElementById('engineBadge').variant =
+                v === 'local' ? 'neutral' : 'primary';
+        });
+    }
+});
+
+/* ══════════════════════════════════════════════
+   DIAGNOSIS ENGINE
+   ══════════════════════════════════════════════ */
+async function runDiagnosis() {
     const sym = document.getElementById('inSymptom').value.trim();
     const topo = document.getElementById('inTopology').value.trim();
     const show = document.getElementById('inShowOutput').value.trim();
     if (!sym || !show) {
-        const t = document.createElement('sl-alert');
-        t.variant = 'warning'; t.closable = true; t.duration = 4000;
-        t.innerHTML = '<sl-icon slot="icon" name="exclamation-triangle"></sl-icon>Provide at least a symptom and show-command output.';
-        document.body.appendChild(t);
-        t.toast();
+        toast('warning', 'Provide at least a symptom and show-command output.');
         return;
     }
 
     const btn = document.getElementById('btnDiagnose');
     btn.loading = true;
 
-    setTimeout(() => {
-        const res = diagnoseLocal(sym, topo, show);
-        showResult(res);
-        btn.loading = false;
-    }, 700);
+    const engine = document.getElementById('aiEngine').value;
+    const apiKey = document.getElementById('apiKeyInput').value.trim();
+
+    let result;
+    try {
+        if (engine === 'gemini' && apiKey) {
+            result = await callGemini(apiKey, sym, topo, show);
+        } else if (engine === 'openai' && apiKey) {
+            result = await callOpenAI(apiKey, sym, topo, show);
+        } else {
+            result = diagnoseLocal(sym, topo, show);
+        }
+    } catch (err) {
+        console.error('AI API error:', err);
+        toast('danger', `AI call failed: ${err.message}. Falling back to local rules.`);
+        result = diagnoseLocal(sym, topo, show);
+    }
+
+    showResult(result);
+    btn.loading = false;
 }
 
+/* ── Gemini API ── */
+async function callGemini(key, sym, topo, show) {
+    const userMsg = `Symptom: ${sym}\nTopology Note: ${topo}\nShow Output:\n${show.replace(/\|/g, '\n')}`;
+
+    const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                contents: [{ parts: [{ text: userMsg }] }],
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                    temperature: 0.2,
+                    maxOutputTokens: 1024
+                }
+            })
+        }
+    );
+
+    if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Gemini ${resp.status}: ${errBody.substring(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Empty Gemini response');
+    return parseAIResponse(text);
+}
+
+/* ── OpenAI API ── */
+async function callOpenAI(key, sym, topo, show) {
+    const userMsg = `Symptom: ${sym}\nTopology Note: ${topo}\nShow Output:\n${show.replace(/\|/g, '\n')}`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: userMsg }
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+            max_tokens: 1024
+        })
+    });
+
+    if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`OpenAI ${resp.status}: ${errBody.substring(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new Error('Empty OpenAI response');
+    return parseAIResponse(text);
+}
+
+/* ── Parse AI JSON ── */
+function parseAIResponse(raw) {
+    let cleaned = raw.trim();
+    if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+    else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+    if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+    const parsed = JSON.parse(cleaned.trim());
+
+    // Validate required fields exist
+    const required = ['root_cause', 'osi_layer', 'confidence', 'evidence', 'next_command', 'fix_steps'];
+    for (const key of required) {
+        if (!parsed[key]) parsed[key] = 'Not provided';
+    }
+    if (!Array.isArray(parsed.fix_steps)) {
+        parsed.fix_steps = [String(parsed.fix_steps)];
+    }
+    if (!parsed.concept_tag) parsed.concept_tag = 'Unknown';
+    return parsed;
+}
+
+/* ── Toast helper ── */
+function toast(variant, msg) {
+    const t = document.createElement('sl-alert');
+    t.variant = variant; t.closable = true; t.duration = 4000;
+    const icon = variant === 'warning' ? 'exclamation-triangle' : variant === 'danger' ? 'x-circle' : 'info-circle';
+    t.innerHTML = `<sl-icon slot="icon" name="${icon}"></sl-icon>${msg}`;
+    document.body.appendChild(t);
+    t.toast();
+}
+
+/* ── Local Rule Engine (fallback) ── */
 function diagnoseLocal(sym, topo, show) {
     const blob = (sym + ' ' + topo + ' ' + show).toLowerCase();
 
@@ -844,22 +995,13 @@ function clearForm() {
 function review(status) {
     const note = document.getElementById('reviewNote').value.trim();
     if (!note) {
-        const t = document.createElement('sl-alert');
-        t.variant = 'warning'; t.closable = true; t.duration = 3000;
-        t.innerHTML = '<sl-icon slot="icon" name="exclamation-triangle"></sl-icon>Enter a reviewer note first.';
-        document.body.appendChild(t);
-        t.toast();
+        toast('warning', 'Enter a reviewer note first.');
         return;
     }
     const bar = document.getElementById('reviewBar');
     const variant = status === 'Accepted' ? 'success' : status === 'Edited' ? 'warning' : 'danger';
     bar.innerHTML = `<sl-badge variant="${variant}" pill style="font-size:13px;">${status}</sl-badge><span style="font-size:12px;color:var(--ns-text-muted);">${note}</span>`;
-
-    const t = document.createElement('sl-alert');
-    t.variant = variant; t.closable = true; t.duration = 4000;
-    t.innerHTML = `<sl-icon slot="icon" name="${status==='Accepted'?'check-circle':status==='Edited'?'pencil':'x-circle'}"></sl-icon>Review submitted: <strong>${status}</strong>`;
-    document.body.appendChild(t);
-    t.toast();
+    toast(variant, `Review submitted: <strong>${status}</strong>`);
 }
 
 /* ══════════════════════════════════════════════
