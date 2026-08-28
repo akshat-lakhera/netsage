@@ -1,0 +1,15 @@
+=== NetSage AI Rule Checker Output ===
+[C005] Findings:
+  - Duplicate IP address detected: 10.0.15.20
+[C010] Findings:
+  - Gateway subnet mismatch: Host IP (10.0.25.50) and Gateway (10.0.24.1) are on different subnets
+[C013] Findings:
+  - Routing table contains no active IPv4 subnet routes
+[C017] Findings:
+  - Duplicate IP address detected: 10.0.15.20
+[C022] Findings:
+  - Gateway subnet mismatch: Host IP (10.0.25.50) and Gateway (10.0.24.1) are on different subnets
+[C029] Findings:
+  - Duplicate IP address detected: 10.0.15.20
+
+Scanned 30 cases. Found rule anomalies in 6 cases.

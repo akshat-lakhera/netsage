@@ -138,14 +138,19 @@ def main():
         var_case = generate_variant(template, new_id_num)
         all_cases.append(var_case)
         
-    # Write back 30 cases
+    # Filter dict keys to match fieldnames exactly
     fieldnames = ["case_id", "symptom", "topology_note", "show_output", "expected_fault", "osi_layer", "concept_tag", "severity"]
+    cleaned_cases = []
+    for c in all_cases:
+        clean_c = {k: c.get(k, "") for k in fieldnames}
+        cleaned_cases.append(clean_c)
+
     with open(cases_file, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(all_cases)
+        writer.writerows(cleaned_cases)
         
-    print(f"Successfully generated dataset with {len(all_cases)} total cases in {cases_file}.")
+    print(f"Successfully generated dataset with {len(cleaned_cases)} total cases in {cases_file}.")
 
 if __name__ == "__main__":
     main()
